@@ -1,0 +1,57 @@
+
+#include"stdio.h"
+exec sql include sqlca;
+int  main()
+{
+   exec sql begin declare section;
+   char *usr1="OracleUser/OracleUser123@oraclePwd";
+   char *usr2="OracleUser_test/OracleUser_test123@oraclePwd";
+   sql_context usrcontext;
+   int sal;
+
+   varchar empId[20];
+
+   exec sql end declare section;
+
+
+   //memset
+
+   memset(empId.arr,'\0',sizeof(empId.arr));
+
+
+   exec sql whenever sqlerror go to sqlerr;
+
+   Exec sql  context allocate :usrcontext;
+   Exec sql context use :usrcontext;
+   Exec sql connect :usr1;
+
+
+
+   try
+   {
+      EXEC SQL EXECUTE
+         BEGIN
+
+           myApplication_procedure(:empId);
+
+      END;
+      END-EXEC;
+   }
+   catch(...)
+   {
+      printf("\n\n:::: UNEXPECTED ANALYSIS ENTERED :::::   FUNCTION :: %s LINE :: %d \n",__FUNCTION__,__LINE__);
+   }
+
+
+   exec sql select ACCT_salary into :sal from EMPLOYEE_TABLE where empId LIKE '987650004';
+   printf("\n Account salary: %d",sal);
+
+   printf("\n Success!!!!!!\n");
+
+   return 0;
+
+sqlerr:
+   printf("\nError in DB \n");
+
+   return 0;
+}
