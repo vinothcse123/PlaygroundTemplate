@@ -1,0 +1,246 @@
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include "DBModifysalary.h"
+
+EXEC SQL BEGIN DECLARE SECTION;
+sql_context context[10];
+varchar empId_HV[10];
+short empId_IV;
+int salary=0;
+EXEC SQL END DECLARE SECTION;
+
+
+
+typedef struct DB_info_tag
+{
+   int empCode;
+   unsigned int context_node;
+   char *conn_string;
+   bool conn_status;
+   struct DB_info_tag *next;
+}DB_info;
+
+
+
+EXEC SQL INCLUDE sqlca;
+
+int read_conn_string(DB_info **head)
+{
+   FILE *fp;
+   unsigned int i=0,j=0,Num_of_connections=0;
+   char file_end=0;
+   fp=fopen("conn_strings.txt","r");
+   if(fp==NULL)
+   {
+      printf("\n Error opening the input.txt file");
+      return 0;
+   }
+   else
+   {
+      char buffer[100];
+      file_end=fscanf(fp,"%s",buffer);
+      if(file_end==EOF)
+      {
+         printf("\n Input file is empty");
+      }
+      else
+      {
+         for(Num_of_connections=1;file_end!=EOF;Num_of_connections++)
+         {
+            if(*head==NULL)
+            {
+
+               *head=(struct DB_info_tag*)malloc(sizeof(struct DB_info_tag));
+               (*head)->empCode=atoi(buffer);
+               file_end=fscanf(fp,"%s",buffer);
+               if(file_end!=EOF)
+               {
+                  (*head)->conn_string=(char *)malloc(sizeof(char)*strlen(buffer));         
+                  strcpy((*head)->conn_string,buffer);
+                  (*head)->next=NULL;
+               }
+               file_end=fscanf(fp,"%s",buffer);
+            }
+
+            DB_info *temp,*node;
+            temp=*head;
+
+            while(temp->next!=NULL)
+            {
+               temp=temp->next;
+            }
+            node=(struct DB_info_tag*)malloc(sizeof(struct DB_info_tag));
+            node->empCode=atoi(buffer);
+            file_end=fscanf(fp,"%s",buffer);
+            node->conn_string=(char *)malloc(sizeof(char)*strlen(buffer));
+            strcpy(node->conn_string,buffer);
+            node->next=NULL;
+            temp->next=node;
+            file_end=fscanf(fp,"%s",buffer);
+         }
+         DB_info *print;
+         print=*head;
+
+         while(print!=NULL)
+         {
+            print=print->next;
+         }
+         fclose(fp);
+      }
+   }
+
+   return 0;
+}
+
+
+
+int conn_DB(void **p_rcontext,char *conn_string_par,DB_info **cur_node)
+{
+
+   EXEC SQL BEGIN DECLARE SECTION;
+   varchar conn_string[10];
+   sql_context local_context;
+   EXEC SQL END DECLARE SECTION;
+   conn_string.len=strlen(conn_string_par);
+   strncpy((char *)conn_string.arr,conn_string_par,conn_string.len);
+
+   EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+   EXEC SQL CONTEXT ALLOCATE :local_context;
+   EXEC SQL CONTEXT USE :local_context;
+   EXEC SQl CONNECT :conn_string;
+   (*cur_node)->conn_status=true;
+   *p_rcontext=local_context;
+   printf("\nDB connection successfull for id %d ",(*cur_node)->empCode);
+   return 0;
+
+sqlerr:
+   printf("\nError in connecting the following DB \nCC:%d CONNECTION STRING %s",(*cur_node)->empCode,(*cur_node)->conn_string);
+   (*cur_node)->conn_status=false;
+   return 0;
+}
+
+
+
+int freecontext(void *p_context)
+{
+   EXEC SQL BEGIN DECLARE SECTION;
+   sql_context local_context; 
+   EXEC SQL END DECLARE SECTION;
+   local_context=p_context;
+   EXEC SQL CONTEXT FREE :local_context;
+   return 0;
+
+sqlerr:
+   printf("\n Error in deallocating context");
+   return 0;
+}
+
+bool modifysalary(modify_salary_res **dp_modify_salary_res_var,void *p_context,modify_salary *p_modify_salary_req)
+{
+   EXEC SQL BEGIN DECLARE SECTION;
+   sql_context local_context;
+   int old_sal;
+   int new_sal;
+   int salary_offset;
+   int empId_db_status;
+   VARCHAR empId_db[20];
+   EXEC SQL END DECLARE SECTION;
+   local_context=p_context;
+   salary_offset=0;
+   old_sal=0;
+   new_sal=0;
+   empId_db_status=0;
+   memset(&empId_db.arr,'\0',sizeof(empId_DB.arr));
+   empId_db.len=strlen((*dp_modify_salary_res_var)->empId);
+   strncpy((char *)empId_db.arr,(*dp_modify_salary_res_var)->empId,strlen((*dp_modify_salary_res_var)->empId));
+
+   EXEC SQL CONTEXT USE :local_context;
+   EXEC SQL SELECT COUNT(*) INTO :empId_db_status FROM EMPLOYEE_TABLE WHERE empId = :empId_DB;
+   if(empId_db_status!=1)
+   {
+      printf("\nempId NOT EXISTS IN DB");      
+      return false;
+   }
+
+   EXEC SQL SELECT    ACCT_salary into :old_sal FROM EMPLOYEE_TABLE WHERE empId = :empId_DB;
+   (*dp_modify_salary_res_var)->oldsalary=old_sal;
+
+   printf("\n Current salary of %s is  %d ",(*dp_modify_salary_res_var)->empId,old_sal);
+
+   if(p_modify_salary_req->opcode[0] == 'a' || p_modify_salary_req->opcode[0] == 'A')
+   {
+      salary_offset=old_sal+p_modify_salary_req->amount;
+   }
+   else 
+   {
+      if(old_sal != 0)
+      {
+         salary_offset=old_sal-p_modify_salary_req->amount;
+      }
+      else
+      {
+         printf("\nsalary cannot be deducted if current salary is 0");
+         return false;
+      }
+   }
+
+   EXEC SQL UPDATE EMPLOYEE_TABLE SET ACCT_salary=:salary_offset WHERE empId = :empId_DB;
+   EXEC SQL COMMIT;
+   EXEC SQL SELECT  ACCT_salary into :new_sal  FROM EMPLOYEE_TABLE WHERE empId = :empId_DB;
+   (*dp_modify_salary_res_var)->newsalary=new_sal;
+   strcpy((*dp_modify_salary_res_var)->empId,p_modify_salary_req->empId);
+   printf("\n New salary of %s is  %d ",(*dp_modify_salary_res_var)->empId,new_sal);
+   return true;
+sqlerr:
+   return false;
+}
+
+bool DB_Process_modifysalary(modify_salary_res **dp_modify_salary_res_var,modify_salary* p_modify_salary_req)
+{
+   printf("\n empId %s empCode %d",(*dp_modify_salary_res_var)->empId,(*dp_modify_salary_res_var)->cc); 
+
+   void *rcontext;
+
+   EXEC SQL BEGIN DECLARE SECTION;
+   unsigned int Num_of_connections=0,i=0,j=0;
+   unsigned int Num_of_empId=0;
+   int node=0;
+   EXEC SQL END DECLARE SECTION;
+
+   bool cc_found_flag;
+   int db_status;
+   DB_info *head_conn_string=NULL;
+   DB_info *temp;
+
+   read_conn_string(&head_conn_string);
+   temp=head_conn_string;
+   cc_found_flag=false;
+   while(temp!=NULL)
+   {
+      if(temp->empCode == (*dp_modify_salary_res_var)->cc )
+      {
+         db_status=conn_DB(&rcontext,(char *)temp->conn_string,&temp);  
+         cc_found_flag=true;
+         printf("\n CONN STRING %s ",temp->conn_string);
+         break;
+      }
+      temp=temp->next;
+   }
+
+
+   if (false == modifysalary(dp_modify_salary_res_var,rcontext,p_modify_salary_req))
+   {
+      printf("\n Error in  modifying the salary");
+      return false;
+   }
+   else
+   {
+      printf("\nModifying salary success"); 
+   }
+
+   freecontext(rcontext);
+   printf("\n");
+
+   return true;
+}
