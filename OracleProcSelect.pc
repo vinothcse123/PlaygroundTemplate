@@ -1,0 +1,90 @@
+#include"stdio.h"
+#include  <cstring>
+Exec sql include sqlca;
+
+#define CONNECTION_STRING "OracleUser4/oraclePwd@oracleDb"
+
+EXEC SQL BEGIN DECLARE SECTION;
+
+typedef struct ConnectionInfo_t
+{
+   sql_context m_connectionContext;
+}ConnectionInfo;
+
+EXEC SQL END DECLARE SECTION;
+
+void connectDatabase(ConnectionInfo *p_connectionInfo_ptr);
+
+void connectDatabase(ConnectionInfo *p_connectionInfo_ptr)
+{
+   if(!p_connectionInfo_ptr)
+      return;
+
+   /* Declaration */
+
+   struct sqlca sqlca;
+
+   EXEC SQL BEGIN DECLARE SECTION;
+
+   char *l_connectionString=CONNECTION_STRING;
+   sql_context l_connectionContext;
+
+   EXEC SQL END DECLARE SECTION;
+
+   /* Intializations */
+
+
+   /* Database Connection Handling */
+
+  EXEC SQL WHENEVER SQLERROR GO TO l_sqlErrorLabel;
+   EXEC SQL CONTEXT ALLOCATE :l_connectionContext;
+   EXEC SQL CONTEXT USE :l_connectionContext;
+   EXEC SQL CONNECT :l_connectionString;
+
+   p_connectionInfo_ptr->m_connectionContext =  l_connectionContext;
+
+   return;
+
+l_sqlErrorLabel:
+   printf("\nError Occured: %d : %s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
+
+   return;
+}
+
+int  main()
+{
+   /* Declaration */
+
+   struct sqlca sqlca;
+   ConnectionInfo l_connectionInfo;
+
+   EXEC SQL BEGIN DECLARE SECTION;
+
+   sql_context l_connectionContext;
+   double l_salary=0;
+
+   EXEC SQL END DECLARE SECTION;
+
+   /* Intializations */
+
+
+   /* Database Connection Handling */
+   EXEC SQL WHENEVER SQLERROR GO TO l_sqlErrorLabel;
+   connectDatabase(&l_connectionInfo);
+   EXEC SQL CONTEXT USE :l_connectionInfo.m_connectionContext;
+
+   /* Operations */
+
+   EXEC SQL SELECT ACCT_salary  into :l_salary from EMPLOYEE_TABLE where empId LIKE '6665550001';
+
+   printf("\n  :: %f ", l_salary );
+
+   return 0;
+
+l_sqlErrorLabel:
+   printf("\nError Occured: %d : %s\n",sqlca.sqlcode,sqlca.sqlerrm.sqlerrmc);
+
+   return 0;
+}
+
+
