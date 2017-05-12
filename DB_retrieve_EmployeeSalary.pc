@@ -1,0 +1,349 @@
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+
+
+EXEC SQL BEGIN DECLARE SECTION;
+sql_context context[10];
+varchar empId_HV[10];
+short empId_IV;
+int salary=0;
+EXEC SQL END DECLARE SECTION;
+
+
+
+typedef struct DB_info_tag
+{
+   int empCode;
+   unsigned int context_node;
+   char *conn_string;
+   bool conn_status;
+   struct DB_info_tag *next;
+}DB_info;
+
+typedef struct empId_info_tag
+{
+   int empCode;
+   char *empId;
+   int cc_status;
+   int salary;
+   int topup_face_value;
+   struct empId_info_tag *next;
+   bool retrieve_status;
+}empId_info;
+
+
+EXEC SQL INCLUDE sqlca;
+
+int read_conn_string(DB_info **head)
+{
+   FILE *fp;
+   unsigned int i=0,j=0,Num_of_connections=0;
+   char file_end=0;
+   fp=fopen("conn_strings.txt","r");
+   if(fp==NULL)
+   {
+      printf("\n Error opening the input.txt file");
+      return 0;
+   }
+   else
+   {
+      char buffer[100];
+      file_end=fscanf(fp,"%s",buffer);
+      if(file_end==EOF)
+      {
+         printf("\n Input file is empty");
+      }
+      else
+      {
+         for(Num_of_connections=1;file_end!=EOF;Num_of_connections++)
+         {
+            if(*head==NULL)
+            {
+
+               *head=(struct DB_info_tag*)malloc(sizeof(struct DB_info_tag));
+               (*head)->empCode=atoi(buffer);
+               file_end=fscanf(fp,"%s",buffer);
+               if(file_end!=EOF)
+               {
+                  (*head)->conn_string=(char *)malloc(sizeof(char)*strlen(buffer));         
+                  strcpy((*head)->conn_string,buffer);
+                  (*head)->next=NULL;
+
+               }
+               file_end=fscanf(fp,"%s",buffer);
+            }
+
+            DB_info *temp,*node;
+            temp=*head;
+
+            while(temp->next!=NULL)
+            {
+               temp=temp->next;
+            }
+            node=(struct DB_info_tag*)malloc(sizeof(struct DB_info_tag));
+            node->empCode=atoi(buffer);
+            file_end=fscanf(fp,"%s",buffer);
+            node->conn_string=(char *)malloc(sizeof(char)*strlen(buffer));
+            strcpy(node->conn_string,buffer);
+            node->next=NULL;
+            temp->next=node;
+            file_end=fscanf(fp,"%s",buffer);
+         }
+         DB_info *print;
+         print=*head;
+
+         while(print!=NULL)
+         {
+            print=print->next;
+         }
+         fclose(fp);
+      }
+   }
+
+   return 0;
+}
+
+int read_empId(empId_info **head)
+{
+   FILE *fp;
+   unsigned int i=0,j=0,Num_of_empId=0;
+   char file_end=0;
+   fp=fopen("empId.txt","r");
+   if(fp==NULL)
+   {
+      printf("\n Error opening the empId.txt file");
+      return 0;
+   }
+   else
+   {
+      char buffer[100];
+      file_end=fscanf(fp,"%s",buffer);
+
+      if(file_end==EOF)
+      {
+         printf("\n Input file is empty");
+      }
+
+      for(Num_of_empId=1;file_end!=EOF;Num_of_empId++)
+      {
+
+
+         if(*head==NULL)
+         {
+            *head=(struct empId_info_tag*)malloc(sizeof(struct empId_info_tag));
+
+            (*head)->empId=(char *)malloc(sizeof(char)*strlen(buffer));         
+            strcpy((*head)->empId,buffer);
+            file_end=fscanf(fp,"%s",buffer);
+            if(file_end!=EOF)
+            {
+               (*head)->empCode=atoi(buffer);
+               (*head)->next=NULL;                         
+            }
+
+            file_end=fscanf(fp,"%s",buffer);
+         }
+         empId_info *temp,*node;
+         temp=*head;
+         while(temp->next!=NULL)
+         {
+            temp=temp->next;
+         }
+         node=(struct empId_info_tag*)malloc(sizeof(struct empId_info_tag));
+         node->empId=(char *)malloc(sizeof(char)*strlen(buffer));
+         strcpy(node->empId,buffer);
+         file_end=fscanf(fp,"%s",buffer);
+
+         node->empCode=atoi(buffer);
+         node->next=NULL;
+         temp->next=node;
+         file_end=fscanf(fp,"%s",buffer);
+      }
+      fclose(fp);
+   }
+   return 0;
+}
+
+
+int conn_DB(int context_node,char *conn_string_par,DB_info **cur_node)
+{
+
+   EXEC SQL BEGIN DECLARE SECTION;
+   varchar conn_string[10];
+   EXEC SQL END DECLARE SECTION;
+   conn_string.len=strlen(conn_string_par);
+   strncpy((char *)conn_string.arr,conn_string_par,conn_string.len);
+
+   EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+   EXEC SQL CONTEXT ALLOCATE :context[context_node];
+   EXEC SQL CONTEXT USE :context[context_node];
+   EXEC SQl CONNECT :conn_string;
+   (*cur_node)->conn_status=true;
+   (*cur_node)->context_node=context_node;
+   return 0;
+
+sqlerr:
+   printf("\nError in connecting the following DB \nCC:%d CONNECTION STRING %s",(*cur_node)->empCode,(*cur_node)->conn_string);
+   (*cur_node)->conn_status=false;
+   (*cur_node)->context_node=context_node;
+   return 0;
+}
+
+int read_salary(DB_info *temp_parse_DBinfo,empId_info **temp_parse_empId)
+{
+   empId_info *temp_empId_node;
+   DB_info *temp_DB_node=temp_parse_DBinfo;
+   while(temp_parse_DBinfo!=NULL)
+   {  
+      temp_empId_node=*temp_parse_empId;
+      if((temp_parse_DBinfo)->conn_status==true)
+      {
+         EXEC SQL CONTEXT USE :context[(temp_parse_DBinfo)->context_node];
+         while(temp_empId_node!=NULL)
+         {
+            if((temp_empId_node)->empCode==(temp_parse_DBinfo)->cc)
+            { 
+               int salary=0;
+               empId_HV.len=strlen((temp_empId_node)->empId);
+               strncpy((char *)empId_HV.arr,(temp_empId_node)->empId,empId_HV.len);
+               salary=0;
+               empId_IV=-1;
+
+               EXEC SQL select  ACCT_salary into :salary :empId_IV  from EMPLOYEE_TABLE where  empId = :empId_HV;
+               if(empId_IV!=-1)
+               {
+                  (temp_empId_node)->salary=salary;
+                  temp_empId_node->retrieve_status=true;
+               }
+               else
+               {
+                  temp_empId_node->retrieve_status=false;
+                  (temp_empId_node)->salary=0;
+               }
+            }
+            temp_empId_node=(temp_empId_node)->next;
+         }
+      }
+
+
+      temp_parse_DBinfo=(temp_parse_DBinfo)->next;
+   }
+
+   temp_empId_node=*temp_parse_empId;
+   temp_parse_DBinfo=temp_DB_node;
+
+   //empCode STATUS CHECK
+   while(temp_empId_node!=NULL)
+   {
+      temp_empId_node->cc_status=false;
+      temp_parse_DBinfo=temp_DB_node;
+      while(temp_parse_DBinfo!=NULL)
+      {
+         if(temp_parse_DBinfo->empCode==temp_empId_node->cc)
+         {
+            temp_empId_node->cc_status=true;
+            break;
+         }
+         temp_parse_DBinfo=temp_parse_DBinfo->next;
+      }
+      temp_empId_node=temp_empId_node->next;
+   }
+   return 0;
+sqlerr:
+   printf("Error in DB");
+   return 0;
+}
+
+int display_salary(empId_info *node,DB_info *node_db)
+{
+   empId_info *head;
+
+   head=node;
+   printf("\n\nsalary FOR empId");
+   while(node!=NULL)
+   {
+      if(node->retrieve_status==true)
+      {
+         printf("\nCC %d empId %s salary %d",(node)->empCode,(node)->empId,(node)->salary);
+      }
+      node=(node)->next;
+   }
+   printf("\n\nFOLOWING empId NOT EXISTS IN DB");
+   node=head;
+   while(node!=NULL)
+   {
+      if(node->retrieve_status==false  && node->cc_status==true)
+      {
+         printf("\nCC %d empId %s ",(node)->empCode,(node)->empId);
+      }
+      node=(node)->next;
+   }
+   printf("\n\nempId WITH INVALID empCode DETAILS");
+   node=head;
+   while(node!=NULL)
+   {
+      if(node->cc_status==false)
+      {
+         printf("\nCC %d empId %s ",(node)->empCode,(node)->empId);
+      }
+      node=(node)->next;
+   }
+
+   printf("\n\nDB CONNECTION ERROR DETAILS ");
+   while(node_db!=NULL)
+   {
+      if(node_db->conn_status==false)
+      {
+         printf("\nCC %d CONN STRING %s ",(node_db)->empCode,(node_db)->conn_string);
+      }
+      node_db=(node_db)->next;
+   }
+   printf("\n");
+   return 0;
+
+}
+
+int freecontext(DB_info **DB_node)
+{
+   while(DB_node!=NULL && (*DB_node)->conn_status==true)
+   {
+      EXEC SQL CONTEXT FREE :context[(*DB_node)->context_node];
+      (*DB_node)=(*DB_node)->next;
+   }
+   return 0;
+sqlerr:
+   printf("\n Error in deallocating context");
+   return 0;
+}
+
+int main()
+{
+
+   EXEC SQL BEGIN DECLARE SECTION;
+   unsigned int Num_of_connections=0,i=0,j=0;
+   unsigned int Num_of_empId=0;
+   int node=0;
+   unsigned int context_count=0;
+   EXEC SQL END DECLARE SECTION;
+   int db_status;
+   DB_info *head_conn_string=NULL;
+   empId_info *head_empId=NULL;
+   DB_info *temp;
+
+   read_conn_string(&head_conn_string);
+   temp=head_conn_string;
+   while(temp!=NULL)
+   {
+      db_status=conn_DB(context_count,(char *)temp->conn_string,&temp);  
+
+      temp=temp->next;
+      context_count++;
+   }
+   read_empId(&head_empId);
+   read_salary(head_conn_string,&head_empId);
+   display_salary(head_empId,head_conn_string);
+   freecontext(&head_conn_string);
+   printf("\n");
+   return 0;
+}
