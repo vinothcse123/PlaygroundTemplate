@@ -1,0 +1,62 @@
+#include<stdio.h>
+#include <string>
+EXEC SQL INCLUDE sqlca;
+
+class DbConnection
+{
+   private:
+      std::string m_dbConnectionString_;
+      void *m_dbConnectionContext_;
+      bool connectDatabase();
+
+   public:
+      DbConnection(std::string p_dbConnectionString);
+      void* getDbConnectionContext()
+      {
+         return m_dbConnectionContext_;
+      }
+};
+
+DbConnection::DbConnection(std::string p_dbConnectionString)
+{
+   m_dbConnectionString_ = p_dbConnectionString;
+   m_dbConnectionContext_=NULL;
+
+   connectDatabase();
+}
+
+bool DbConnection::connectDatabase()
+{
+   EXEC SQL BEGIN DECLARE SECTION;
+
+   char *l_dbConnectionString_ptr;
+   sql_context l_dBConnectionContext_DB;
+
+   EXEC SQL END DECLARE SECTION;
+
+   l_dbConnectionString_ptr = new char( m_dbConnectionString_.length()+1 );
+
+   strcpy(l_dbConnectionString_ptr,m_dbConnectionString_.c_str());
+
+   EXEC SQL WHENEVER SQLERROR GOTO sqlerr;
+   EXEC SQL CONTEXT ALLOCATE :l_dBConnectionContext_DB;
+   EXEC SQL CONTEXT USE :l_dBConnectionContext_DB;
+   EXEC SQL CONNECT :l_dbConnectionString_ptr;
+
+   m_dbConnectionContext_  = l_dBConnectionContext_DB;
+
+   delete l_dbConnectionString_ptr;
+   return true;
+
+sqlerr:
+   printf("Error occured in connecting with database");
+   delete l_dbConnectionString_ptr;
+   return false;
+}
+
+
+int main()
+{
+   DbConnection dbConnection("oraclemyApplication/oraclemyApplication123@oraclePZ");
+}
+
