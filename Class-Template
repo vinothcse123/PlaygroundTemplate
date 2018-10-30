@@ -1,0 +1,23 @@
+#include<iostream>
+
+template<class MyTemplateType>
+class ArrayNotFound
+{
+	private:
+		bool learnSomethingNew;
+		
+	public:
+		ArrayNotFound()
+		{
+			std::cout<<"ArrayNotFound constructor called"<<std::endl;
+			learnSomethingNew=false;
+		}
+		
+		
+};
+
+int main()
+{
+	
+	return 0;
+}
