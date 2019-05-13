@@ -1,0 +1,27 @@
+#include<iostream>
+#define print(str,val) std::cout << str << " : " << val << std::endl;
+
+struct Problem
+{
+	void init();
+	void solve();
+};
+
+
+
+void Problem::solve()
+{
+
+}
+
+void Problem::init()
+{
+
+}
+
+
+int main()
+{	
+	Problem s;
+	s.solve();
+}
