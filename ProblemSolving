@@ -23,5 +23,6 @@ void Problem::init()
 int main()
 {	
 	Problem s;
+	s.init();
 	s.solve();
 }
