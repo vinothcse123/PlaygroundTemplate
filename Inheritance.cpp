@@ -1,23 +1,23 @@
 #include<iostream>
 
 
-class Language
+class BaseClass
 {
 	
 	public:
-		Language()
+		BaseClass()
 		{
-			std::cout<<"Language constructor called"<<std::endl;
+			std::cout<<"BaseClass constructor called"<<std::endl;
 		}
 };
 
-class cpp : public Language
+class DerivedClass : public BaseClass
 {
 	
 	public:
-		cpp()
+		DerivedClass()
 		{
-			std::cout<<"cpp constructor called"<<std::endl;
+			std::cout<<"DerivedClass constructor called"<<std::endl;
 		}
 };
 
