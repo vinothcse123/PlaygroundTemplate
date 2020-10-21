@@ -1,21 +1,21 @@
 #include<iostream>
 
 template<typename T>
-class ArrayNotFound
+class TemplateClass
 {
 	private:
 		T a;
 		
 	public:
-		ArrayNotFound()
+		TemplateClass()
 		{
-			std::cout<<"ArrayNotFound constructor called"<<std::endl;
+			std::cout<<"TemplateClass constructor called"<<std::endl;
 			learnSomethingNew=false;
 		}
 		
-		~ArrayNotFound()
+		~TemplateClass()
 		{
-			std::cout<<"ArrayNotFound destructor called"<<std::endl;
+			std::cout<<"TemplateClass destructor called"<<std::endl;
 		}
 };
 
