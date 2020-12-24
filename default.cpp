@@ -7,11 +7,10 @@ using std::cout;
 using std::string;
 
 int main()
-{	
-	using namespace std;
+{
+    int myNumber=-1;
 
 
-    	cout<< "HELLO" << '\n';
-	
-	return 0;
+    cout<< "Result :" << myNumber << '\n';	
+    return 0;
 }
