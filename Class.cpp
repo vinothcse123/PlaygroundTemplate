@@ -1,20 +1,20 @@
 #include<iostream>
 
-class ArrayNotFound
+class MyClass
 {
 	private:
-		bool learnSomethingNew;
+		bool m_myBool=false;
 		
 	public:
-		ArrayNotFound()
+		MyClass()
 		{
-			std::cout<<"ArrayNotFound constructor called"<<std::endl;
-			learnSomethingNew=false;
+			std::cout<<"MyClass constructor called"<<std::endl;
+			m_myBool=false;
 		}
 		
-		~ArrayNotFound()
+		~MyClass()
 		{
-			std::cout<<"ArrayNotFound destructor called"<<std::endl;
+			std::cout<<"MyClass destructor called"<<std::endl;
 		}
 };
 
