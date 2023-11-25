@@ -2,21 +2,22 @@
 #include<list>
 #include<memory>
 
-class CacheNode
-{
-	public:
-		int id;
-	
-	CacheNode(int inpId): id(inpId) {}
-};
 
 int main()
 {
-	std::list<std::shared_ptr<CacheNode>> cacheQueue;
+	std::list<int> myList;
     ;
-    cacheQueue.push_back(std::make_shared<CacheNode>(1));
-    cacheQueue.push_back(std::make_shared<CacheNode>(2));
-    cacheQueue.push_back(std::make_shared<CacheNode>(3));
+    myList.push_back(1);
+    myList.push_back(2);
+    myList.push_back(3);
+
+    myList.remove(2);
+ 
+    for(auto val : myList)
+    {
+        std::cout << " ==============V6P: Key "<<  val  << "==================" << std::endl;
+
+    }
 
 	return 0;
 }
